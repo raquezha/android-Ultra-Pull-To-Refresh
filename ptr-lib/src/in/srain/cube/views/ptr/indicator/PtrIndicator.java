@@ -6,11 +6,15 @@ public class PtrIndicator {
 
     public final static int POS_START = 0;
     protected int mOffsetToRefresh = 0;
-    private PointF mPtLastMove = new PointF();
+
+    private final PointF mPtLastDownPoint = new PointF();
+    private final PointF mPtLastMove = new PointF();
     private float mOffsetX;
     private float mOffsetY;
     private int mCurrentPos = 0;
     private int mLastPos = 0;
+    private int mDeadZone = 0;
+    private boolean mIsPullActivated = false;
     private int mHeaderHeight;
     private int mPressedPos = 0;
 
@@ -35,10 +39,15 @@ public class PtrIndicator {
 
     public void onRelease() {
         mIsUnderTouch = false;
+        mIsPullActivated = false;
     }
 
     public void onUIRefreshComplete() {
         mRefreshCompleteY = mCurrentPos;
+    }
+
+    public PointF getLastMove(){
+        return mPtLastMove;
     }
 
     public boolean goDownCrossFinishPosition() {
@@ -46,7 +55,11 @@ public class PtrIndicator {
     }
 
     protected void processOnMove(float currentX, float currentY, float offsetX, float offsetY) {
-        setOffset(offsetX, offsetY / mResistance);
+        if (isOverOffsetToRefresh() && offsetY > 0 && mCurrentPos > (1.2 * getHeaderHeight())) {
+            setOffset(offsetX, offsetY / mResistance / (mCurrentPos / (float) (getHeaderHeight() / 8)));
+        } else {
+            setOffset(offsetX, offsetY / mResistance);
+        }
     }
 
     public void setRatioOfHeaderHeightToRefresh(float ratio) {
@@ -70,6 +83,7 @@ public class PtrIndicator {
     public void onPressDown(float x, float y) {
         mIsUnderTouch = true;
         mPressedPos = mCurrentPos;
+        mPtLastDownPoint.set(x, y);
         mPtLastMove.set(x, y);
     }
 
@@ -78,6 +92,7 @@ public class PtrIndicator {
         float offsetY = (y - mPtLastMove.y);
         processOnMove(x, y, offsetX, offsetY);
         mPtLastMove.set(x, y);
+        mIsPullActivated = true;
     }
 
     protected void setOffset(float x, float y) {
@@ -99,6 +114,14 @@ public class PtrIndicator {
 
     public int getCurrentPosY() {
         return mCurrentPos;
+    }
+
+    public float getDistanceX() {
+        return mPtLastMove.x - mPtLastDownPoint.x;
+    }
+
+    public float getDistanceY() {
+        return mPtLastMove.y - mPtLastDownPoint.y;
     }
 
     /**
@@ -182,16 +205,27 @@ public class PtrIndicator {
     }
 
     public float getLastPercent() {
-        final float oldPercent = mHeaderHeight == 0 ? 0 : mLastPos * 1f / mHeaderHeight;
-        return oldPercent;
+        return mHeaderHeight == 0 ? 0 : mLastPos * 1f / mHeaderHeight;
     }
 
     public float getCurrentPercent() {
-        final float currentPercent = mHeaderHeight == 0 ? 0 : mCurrentPos * 1f / mHeaderHeight;
-        return currentPercent;
+        return mHeaderHeight == 0 ? 0 : mCurrentPos * 1f / mHeaderHeight;
     }
 
     public boolean willOverTop(int to) {
         return to < POS_START;
+    }
+
+    public void setDeadZone(int deadZone){
+        mDeadZone = deadZone;
+    }
+
+    public int getDeadZone(){
+        return mDeadZone;
+    }
+
+    //Activated after first move after deadzone.
+    public boolean isPullActivated() {
+        return mIsPullActivated;
     }
 }
